@@ -75,6 +75,19 @@ const parseErrorResponse = async (response: Response): Promise<string> => {
 };
 
 /**
+ * Parse a successful Jira response, including success responses with no body.
+ */
+const parseSuccessResponse = async <T>(response: Response): Promise<T> => {
+  const responseText = await response.text();
+
+  if (responseText.trim() === "") {
+    return undefined as T;
+  }
+
+  return JSON.parse(responseText) as T;
+};
+
+/**
  * Check if an error is retryable.
  */
 const isRetryableError = (status: number): boolean => {
@@ -197,15 +210,7 @@ export const jiraFetch = async <T = unknown>(
         );
       }
 
-      // Handle empty responses (e.g., 204 No Content)
-      if (
-        response.status === 204 ||
-        response.headers.get("content-length") === "0"
-      ) {
-        return undefined as T;
-      }
-
-      return response.json() as Promise<T>;
+      return parseSuccessResponse<T>(response);
     } catch (err) {
       clearTimeout(timeoutId);
 
@@ -307,14 +312,7 @@ export const jiraAgileFetch = async <T = unknown>(
         );
       }
 
-      if (
-        response.status === 204 ||
-        response.headers.get("content-length") === "0"
-      ) {
-        return undefined as T;
-      }
-
-      return response.json() as Promise<T>;
+      return parseSuccessResponse<T>(response);
     } catch (err) {
       clearTimeout(timeoutId);
 
