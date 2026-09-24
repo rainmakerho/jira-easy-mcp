@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
  * Jira MCP Server
- * 
+ *
  * A comprehensive MCP server for Jira integration using REST API with Basic Authentication.
- * 
+ *
  * Environment variables:
  *   JIRA_BASE_URL          - Jira instance URL (e.g., https://your-jira.com)
  *   JIRA_USERNAME          - Jira username
@@ -18,10 +18,10 @@
  *   JIRA_CACHE_TTL         - Optional: Cache TTL in seconds (default: 300)
  */
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { validateConfig, getConfig } from './config.js';
-import { info, error as logError } from './logger.js';
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { validateConfig, getConfig } from "./config.js";
+import { info, error as logError } from "./logger.js";
 import {
   registerIssueTools,
   registerCommentTools,
@@ -33,20 +33,23 @@ import {
   registerLinkTools,
   registerUserTools,
   registerFieldTools,
-} from './tools/index.js';
+  registerAttachmentTools,
+} from "./tools/index.js";
 
 // Validate configuration early
 try {
   validateConfig();
 } catch (err) {
-  logError('Configuration error', { error: err instanceof Error ? err.message : String(err) });
+  logError("Configuration error", {
+    error: err instanceof Error ? err.message : String(err),
+  });
   process.exit(1);
 }
 
 // Create MCP server
 const server = new McpServer({
-  name: 'jira-easy-mcp',
-  version: '1.1.0',
+  name: "jira-easy-mcp",
+  version: "1.1.0",
 });
 
 // Register all tools
@@ -60,15 +63,16 @@ registerWorklogTools(server);
 registerLinkTools(server);
 registerUserTools(server);
 registerFieldTools(server);
+registerAttachmentTools(server);
 
 // Start the server
 const main = async (): Promise<void> => {
   const config = getConfig();
-  
-  info('Jira MCP Server starting...', {
+
+  info("Jira MCP Server starting...", {
     baseUrl: config.baseUrl,
     username: config.username,
-    projectsFilter: config.projectsFilter?.join(', ') || 'none',
+    projectsFilter: config.projectsFilter?.join(", ") || "none",
     responseFormat: config.responseFormat,
     timeout: `${config.timeout}ms`,
     retryCount: config.retryCount,
@@ -79,10 +83,12 @@ const main = async (): Promise<void> => {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  info('Jira MCP Server connected via stdio');
+  info("Jira MCP Server connected via stdio");
 };
 
 main().catch((err) => {
-  logError('Fatal error', { error: err instanceof Error ? err.message : String(err) });
+  logError("Fatal error", {
+    error: err instanceof Error ? err.message : String(err),
+  });
   process.exit(1);
 });

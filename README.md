@@ -19,7 +19,6 @@ Most Jira MCP servers require OAuth or API tokens, which many organizations rest
 - 🔒 **Self-hosted Jira Server** instances without OAuth configured
 - ⚡ **Quick setup** without going through IT approval processes
 
-
 ---
 
 ## Quick Start
@@ -46,6 +45,7 @@ Create `.vscode/mcp.json` in your workspace root:
   }
 }
 ```
+
 Add to your VS Code settings for accessing in all workspaces.
 
 > **Note:** `JIRA_PROJECTS_FILTER` and `JIRA_RESPONSE_FORMAT` are optional. Projects filter limits access to specified projects. Response format can be `JSON` (default) or `TOON` (text-oriented notation).
@@ -58,24 +58,39 @@ Add to your VS Code settings for accessing in all workspaces.
 
 All use the same `command`, `args`, and `env` configuration as VS Code above.
 
-
 ---
 
 ## Common Use Cases
 
-| Task | Tool | Example Prompt |
-| --- | --- | --- |
-| **Search issues** | `jira_search` | "Search for all open bugs assigned to me in project ABC" |
-| **Get issue details** | `jira_get_issue` | "Show me the details of issue ABC-123" |
-| **Create issue** | `jira_create_issue` | "Create a new bug in project ABC with title 'Login button not working'" |
-| **Update issue** | `jira_update_issue` | "Change the priority of ABC-123 to High and assign it to john.doe" |
-| **Add comment** | `jira_add_comment` | "Add a comment to ABC-123 saying 'Fix deployed to staging'" |
-| **Change status** | `jira_transition_issue` | "Move ABC-123 to Done" |
-| **Log time** | `jira_add_worklog` | "Log 2 hours of work on ABC-123 for yesterday" |
-| **List projects** | `jira_get_projects` | "Show me all projects I have access to" |
-| **View sprints** | `jira_get_sprints` | "What's in the current sprint for project ABC?" |
-| **Link issues** | `jira_create_link` | "Link ABC-123 as blocking ABC-124" |
-| **Generate filter URL** | `jira_generate_filter_url` | "Create a shareable link for all open bugs updated in the last 7 days" |
+| Task                    | Tool                       | Example Prompt                                                          |
+| ----------------------- | -------------------------- | ----------------------------------------------------------------------- |
+| **Search issues**       | `jira_search`              | "Search for all open bugs assigned to me in project ABC"                |
+| **Get issue details**   | `jira_get_issue`           | "Show me the details of issue ABC-123"                                  |
+| **Create issue**        | `jira_create_issue`        | "Create a new bug in project ABC with title 'Login button not working'" |
+| **Update issue**        | `jira_update_issue`        | "Change the priority of ABC-123 to High and assign it to john.doe"      |
+| **Upload attachment**   | `jira_upload_attachment`   | "Upload `/tmp/error-screenshot.png` to ABC-123"                         |
+| **Add comment**         | `jira_add_comment`         | "Add a comment to ABC-123 saying 'Fix deployed to staging'"             |
+| **Change status**       | `jira_transition_issue`    | "Move ABC-123 to Done"                                                  |
+| **Log time**            | `jira_add_worklog`         | "Log 2 hours of work on ABC-123 for yesterday"                          |
+| **List projects**       | `jira_get_projects`        | "Show me all projects I have access to"                                 |
+| **View sprints**        | `jira_get_sprints`         | "What's in the current sprint for project ABC?"                         |
+| **Link issues**         | `jira_create_link`         | "Link ABC-123 as blocking ABC-124"                                      |
+| **Generate filter URL** | `jira_generate_filter_url` | "Create a shareable link for all open bugs updated in the last 7 days"  |
+
+---
+
+## Uploading Attachments
+
+Use `jira_create_issue` to create an issue, then call `jira_upload_attachment` with the returned issue key and an absolute path to a local file:
+
+```json
+{
+  "issueKey": "ABC-123",
+  "filePath": "/tmp/error-screenshot.png"
+}
+```
+
+The MCP server reads the file from the machine where it runs. Any file type is supported. Jira Server enforces the final attachment size and permission limits.
 
 ---
 
@@ -99,26 +114,25 @@ This opens a browser at `http://localhost:6274` where you can:
 
 ### Optional Environment Variables
 
-| Variable | Default | Description |
-| --- | --- | --- |
-| `JIRA_PROJECTS_FILTER` | *(none)* | Comma-separated project keys to limit access |
-| `JIRA_RESPONSE_FORMAT` | `JSON` | Response format: `JSON` or `TOON` |
-| `JIRA_LOG_LEVEL` | `INFO` | Log verbosity: `DEBUG`, `INFO`, `WARN`, `ERROR` |
-| `JIRA_TIMEOUT` | `30000` | Request timeout in milliseconds |
-| `JIRA_RETRY_COUNT` | `3` | Number of retries for failed requests |
-| `JIRA_RETRY_DELAY` | `1000` | Base delay between retries (ms) |
-| `JIRA_SSL_VERIFY` | `true` | Set to `false` to skip SSL verification |
-| `JIRA_CACHE_TTL` | `300` | Cache TTL in seconds for static data |
+| Variable               | Default  | Description                                     |
+| ---------------------- | -------- | ----------------------------------------------- |
+| `JIRA_PROJECTS_FILTER` | _(none)_ | Comma-separated project keys to limit access    |
+| `JIRA_RESPONSE_FORMAT` | `JSON`   | Response format: `JSON` or `TOON`               |
+| `JIRA_LOG_LEVEL`       | `INFO`   | Log verbosity: `DEBUG`, `INFO`, `WARN`, `ERROR` |
+| `JIRA_TIMEOUT`         | `30000`  | Request timeout in milliseconds                 |
+| `JIRA_RETRY_COUNT`     | `3`      | Number of retries for failed requests           |
+| `JIRA_RETRY_DELAY`     | `1000`   | Base delay between retries (ms)                 |
+| `JIRA_SSL_VERIFY`      | `true`   | Set to `false` to skip SSL verification         |
+| `JIRA_CACHE_TTL`       | `300`    | Cache TTL in seconds for static data            |
 
 ---
 
 ## Compatibility
 
-| Jira Version | Status |
-| --- | --- |
-| Jira Server v7.12.3 | ✅ Tested |
-| Jira Server v8.x | ✅ Tested |
-| Jira Cloud | ︖ Not tested (Use official MCP) |
+| Jira Version        | Status                           |
+| ------------------- | -------------------------------- |
+| Jira Server v7.12.3 | ✅ Tested                        |
+| Jira Server v8.x    | ✅ Tested                        |
+| Jira Cloud          | ︖ Not tested (Use official MCP) |
 
 **You can improve this by [reporting issues](https://github.com/IamSAL/jira-easy-mcp/issues/new/choose)**
-

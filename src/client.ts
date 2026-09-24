@@ -1,14 +1,14 @@
 /**
  * Jira MCP Server - API Client Module
- * 
+ *
  * Low-level HTTP client for Jira REST API with authentication,
  * retry logic, timeout handling, and SSL configuration.
  */
 
-import https from 'node:https';
-import { getConfig } from './config.js';
-import { logApiRequest, logApiResponse, logRetry, warn } from './logger.js';
-import type { JiraApiError } from './types.js';
+import https from "node:https";
+import { getConfig } from "./config.js";
+import { logApiRequest, logApiResponse, logRetry, warn } from "./logger.js";
+import type { JiraApiError } from "./types.js";
 
 // Custom HTTPS agent for SSL configuration (lazy initialized)
 let httpsAgent: https.Agent | null = null;
@@ -23,7 +23,7 @@ const getHttpsAgent = (): https.Agent => {
       rejectUnauthorized: sslVerify,
     });
     if (!sslVerify) {
-      warn('SSL verification disabled - connections may be insecure');
+      warn("SSL verification disabled - connections may be insecure");
     }
   }
   return httpsAgent;
@@ -34,7 +34,7 @@ const getHttpsAgent = (): https.Agent => {
  */
 const getAuthHeader = (): string => {
   const { username, password } = getConfig();
-  const credentials = Buffer.from(`${username}:${password}`).toString('base64');
+  const credentials = Buffer.from(`${username}:${password}`).toString("base64");
   return `Basic ${credentials}`;
 };
 
@@ -45,10 +45,10 @@ export class JiraApiException extends Error {
   constructor(
     message: string,
     public readonly status: number,
-    public readonly errorDetails?: JiraApiError
+    public readonly errorDetails?: JiraApiError,
   ) {
     super(message);
-    this.name = 'JiraApiException';
+    this.name = "JiraApiException";
   }
 }
 
@@ -57,16 +57,18 @@ export class JiraApiException extends Error {
  */
 const parseErrorResponse = async (response: Response): Promise<string> => {
   try {
-    const contentType = response.headers.get('content-type');
-    if (contentType?.includes('application/json')) {
+    const contentType = response.headers.get("content-type");
+    if (contentType?.includes("application/json")) {
       const errorData = (await response.json()) as JiraApiError;
       const messages = [
         ...(errorData.errorMessages || []),
         ...Object.entries(errorData.errors || {}).map(([k, v]) => `${k}: ${v}`),
       ];
-      return messages.length > 0 ? messages.join('; ') : `HTTP ${response.status}`;
+      return messages.length > 0
+        ? messages.join("; ")
+        : `HTTP ${response.status}`;
     }
-    return await response.text() || `HTTP ${response.status}`;
+    return (await response.text()) || `HTTP ${response.status}`;
   } catch {
     return `HTTP ${response.status}`;
   }
@@ -83,8 +85,8 @@ const isRetryableError = (status: number): boolean => {
 /**
  * Sleep for a given number of milliseconds.
  */
-const sleep = (ms: number): Promise<void> => 
-  new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Calculate exponential backoff delay.
@@ -101,18 +103,26 @@ const calculateBackoff = (attempt: number, baseDelay: number): number => {
  */
 export const jiraFetch = async <T = unknown>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<T> => {
   const { baseUrl, timeout, retryCount, retryDelay, sslVerify } = getConfig();
   const url = `${baseUrl}/rest/api/2${endpoint}`;
-  const method = options.method || 'GET';
+  const method = options.method || "GET";
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'Authorization': getAuthHeader(),
-    ...(options.headers as Record<string, string> || {}),
+    Accept: "application/json",
+    Authorization: getAuthHeader(),
+    ...((options.headers as Record<string, string>) || {}),
   };
+
+  if (
+    !(options.body instanceof FormData) &&
+    !Object.keys(headers).some(
+      (header) => header.toLowerCase() === "content-type",
+    )
+  ) {
+    headers["Content-Type"] = "application/json";
+  }
 
   // Build fetch options with SSL agent for Node.js
   const fetchOptions: RequestInit & { dispatcher?: unknown } = {
@@ -121,17 +131,17 @@ export const jiraFetch = async <T = unknown>(
   };
 
   // Add SSL agent if we need to skip verification
-  if (!sslVerify && url.startsWith('https://')) {
+  if (!sslVerify && url.startsWith("https://")) {
     // @ts-expect-error - Node.js fetch supports agent option
     fetchOptions.agent = getHttpsAgent();
   }
 
   let lastError: Error | null = null;
-  
+
   for (let attempt = 0; attempt <= retryCount; attempt++) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
-    
+
     try {
       logApiRequest(method, url);
       const startTime = Date.now();
@@ -147,7 +157,7 @@ export const jiraFetch = async <T = unknown>(
 
       if (!response.ok) {
         const errorText = await parseErrorResponse(response);
-        
+
         // Check if we should retry
         if (isRetryableError(response.status) && attempt < retryCount) {
           const delay = calculateBackoff(attempt, retryDelay);
@@ -155,64 +165,66 @@ export const jiraFetch = async <T = unknown>(
           await sleep(delay);
           continue;
         }
-        
+
         if (response.status === 401) {
           throw new JiraApiException(
-            'Authentication failed. Check your JIRA_USERNAME and JIRA_PASSWORD.',
-            response.status
+            "Authentication failed. Check your JIRA_USERNAME and JIRA_PASSWORD.",
+            response.status,
           );
         }
         if (response.status === 403) {
           throw new JiraApiException(
-            'Access forbidden. CAPTCHA may be triggered - log in via browser first, or check permissions.',
-            response.status
+            "Access forbidden. CAPTCHA may be triggered - log in via browser first, or check permissions.",
+            response.status,
           );
         }
         if (response.status === 404) {
           throw new JiraApiException(
             `Resource not found: ${errorText}`,
-            response.status
+            response.status,
           );
         }
         if (response.status === 429) {
           throw new JiraApiException(
-            'Rate limited by Jira. Please wait and try again.',
-            response.status
+            "Rate limited by Jira. Please wait and try again.",
+            response.status,
           );
         }
-        
+
         throw new JiraApiException(
           `Jira API error (${response.status}): ${errorText}`,
-          response.status
+          response.status,
         );
       }
 
       // Handle empty responses (e.g., 204 No Content)
-      if (response.status === 204 || response.headers.get('content-length') === '0') {
+      if (
+        response.status === 204 ||
+        response.headers.get("content-length") === "0"
+      ) {
         return undefined as T;
       }
 
       return response.json() as Promise<T>;
-      
     } catch (err) {
       clearTimeout(timeoutId);
-      
+
       // Handle timeout/abort errors
-      if (err instanceof Error && err.name === 'AbortError') {
+      if (err instanceof Error && err.name === "AbortError") {
         lastError = new JiraApiException(
           `Request timeout after ${timeout}ms`,
-          0
+          0,
         );
-        
+
         if (attempt < retryCount) {
           const delay = calculateBackoff(attempt, retryDelay);
-          logRetry(attempt + 1, retryCount, 'timeout', delay);
+          logRetry(attempt + 1, retryCount, "timeout", delay);
           await sleep(delay);
           continue;
         }
         throw lastError;
       }
-      
+
       // Handle network errors (retryable)
       if (err instanceof TypeError && attempt < retryCount) {
         const delay = calculateBackoff(attempt, retryDelay);
@@ -221,12 +233,12 @@ export const jiraFetch = async <T = unknown>(
         lastError = err;
         continue;
       }
-      
+
       throw err;
     }
   }
 
-  throw lastError || new Error('Request failed after retries');
+  throw lastError || new Error("Request failed after retries");
 };
 
 /**
@@ -234,17 +246,17 @@ export const jiraFetch = async <T = unknown>(
  */
 export const jiraAgileFetch = async <T = unknown>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<T> => {
   const { baseUrl, timeout, retryCount, retryDelay, sslVerify } = getConfig();
   const url = `${baseUrl}/rest/agile/1.0${endpoint}`;
-  const method = options.method || 'GET';
+  const method = options.method || "GET";
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'Authorization': getAuthHeader(),
-    ...(options.headers as Record<string, string> || {}),
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    Authorization: getAuthHeader(),
+    ...((options.headers as Record<string, string>) || {}),
   };
 
   // Build fetch options with SSL agent for Node.js
@@ -254,17 +266,17 @@ export const jiraAgileFetch = async <T = unknown>(
   };
 
   // Add SSL agent if we need to skip verification
-  if (!sslVerify && url.startsWith('https://')) {
+  if (!sslVerify && url.startsWith("https://")) {
     // @ts-expect-error - Node.js fetch supports agent option
     fetchOptions.agent = getHttpsAgent();
   }
 
   let lastError: Error | null = null;
-  
+
   for (let attempt = 0; attempt <= retryCount; attempt++) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
-    
+
     try {
       logApiRequest(method, url);
       const startTime = Date.now();
@@ -280,7 +292,7 @@ export const jiraAgileFetch = async <T = unknown>(
 
       if (!response.ok) {
         const errorText = await parseErrorResponse(response);
-        
+
         // Check if we should retry
         if (isRetryableError(response.status) && attempt < retryCount) {
           const delay = calculateBackoff(attempt, retryDelay);
@@ -288,37 +300,39 @@ export const jiraAgileFetch = async <T = unknown>(
           await sleep(delay);
           continue;
         }
-        
+
         throw new JiraApiException(
           `Jira Agile API error (${response.status}): ${errorText}`,
-          response.status
+          response.status,
         );
       }
 
-      if (response.status === 204 || response.headers.get('content-length') === '0') {
+      if (
+        response.status === 204 ||
+        response.headers.get("content-length") === "0"
+      ) {
         return undefined as T;
       }
 
       return response.json() as Promise<T>;
-      
     } catch (err) {
       clearTimeout(timeoutId);
-      
-      if (err instanceof Error && err.name === 'AbortError') {
+
+      if (err instanceof Error && err.name === "AbortError") {
         lastError = new JiraApiException(
           `Request timeout after ${timeout}ms`,
-          0
+          0,
         );
-        
+
         if (attempt < retryCount) {
           const delay = calculateBackoff(attempt, retryDelay);
-          logRetry(attempt + 1, retryCount, 'timeout', delay);
+          logRetry(attempt + 1, retryCount, "timeout", delay);
           await sleep(delay);
           continue;
         }
         throw lastError;
       }
-      
+
       if (err instanceof TypeError && attempt < retryCount) {
         const delay = calculateBackoff(attempt, retryDelay);
         logRetry(attempt + 1, retryCount, err.message, delay);
@@ -326,26 +340,28 @@ export const jiraAgileFetch = async <T = unknown>(
         lastError = err;
         continue;
       }
-      
+
       throw err;
     }
   }
 
-  throw lastError || new Error('Request failed after retries');
+  throw lastError || new Error("Request failed after retries");
 };
 
 /**
  * Build URL query string from parameters.
  */
-export const buildQueryString = (params: Record<string, string | number | boolean | undefined>): string => {
+export const buildQueryString = (
+  params: Record<string, string | number | boolean | undefined>,
+): string => {
   const searchParams = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== null && value !== '') {
+    if (value !== undefined && value !== null && value !== "") {
       searchParams.append(key, String(value));
     }
   }
   const queryString = searchParams.toString();
-  return queryString ? `?${queryString}` : '';
+  return queryString ? `?${queryString}` : "";
 };
 
 // =============================================================================
@@ -356,25 +372,45 @@ export const buildQueryString = (params: Record<string, string | number | boolea
  * GET request to Jira REST API v2.
  */
 export const jiraGet = async <T = unknown>(endpoint: string): Promise<T> => {
-  return jiraFetch<T>(endpoint, { method: 'GET' });
+  return jiraFetch<T>(endpoint, { method: "GET" });
 };
 
 /**
  * POST request to Jira REST API v2.
  */
-export const jiraPost = async <T = unknown>(endpoint: string, body: unknown): Promise<T> => {
+export const jiraPost = async <T = unknown>(
+  endpoint: string,
+  body: unknown,
+): Promise<T> => {
   return jiraFetch<T>(endpoint, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify(body),
+  });
+};
+
+/**
+ * POST multipart form data to Jira REST API v2.
+ */
+export const jiraPostForm = async <T = unknown>(
+  endpoint: string,
+  body: FormData,
+): Promise<T> => {
+  return jiraFetch<T>(endpoint, {
+    method: "POST",
+    headers: { "X-Atlassian-Token": "no-check" },
+    body,
   });
 };
 
 /**
  * PUT request to Jira REST API v2.
  */
-export const jiraPut = async <T = unknown>(endpoint: string, body: unknown): Promise<T> => {
+export const jiraPut = async <T = unknown>(
+  endpoint: string,
+  body: unknown,
+): Promise<T> => {
   return jiraFetch<T>(endpoint, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify(body),
   });
 };
@@ -383,22 +419,27 @@ export const jiraPut = async <T = unknown>(endpoint: string, body: unknown): Pro
  * DELETE request to Jira REST API v2.
  */
 export const jiraDelete = async <T = unknown>(endpoint: string): Promise<T> => {
-  return jiraFetch<T>(endpoint, { method: 'DELETE' });
+  return jiraFetch<T>(endpoint, { method: "DELETE" });
 };
 
 /**
  * GET request to Jira Agile REST API.
  */
-export const jiraAgileGet = async <T = unknown>(endpoint: string): Promise<T> => {
-  return jiraAgileFetch<T>(endpoint, { method: 'GET' });
+export const jiraAgileGet = async <T = unknown>(
+  endpoint: string,
+): Promise<T> => {
+  return jiraAgileFetch<T>(endpoint, { method: "GET" });
 };
 
 /**
  * POST request to Jira Agile REST API.
  */
-export const jiraAgilePost = async <T = unknown>(endpoint: string, body: unknown): Promise<T> => {
+export const jiraAgilePost = async <T = unknown>(
+  endpoint: string,
+  body: unknown,
+): Promise<T> => {
   return jiraAgileFetch<T>(endpoint, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify(body),
   });
 };
@@ -406,9 +447,12 @@ export const jiraAgilePost = async <T = unknown>(endpoint: string, body: unknown
 /**
  * PUT request to Jira Agile REST API.
  */
-export const jiraAgilePut = async <T = unknown>(endpoint: string, body: unknown): Promise<T> => {
+export const jiraAgilePut = async <T = unknown>(
+  endpoint: string,
+  body: unknown,
+): Promise<T> => {
   return jiraAgileFetch<T>(endpoint, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify(body),
   });
 };
