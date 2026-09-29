@@ -14,7 +14,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "clean": "rm -rf dist",
+    "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
     "prepublishOnly": "pnpm run clean && pnpm run build",
     "start": "npx @modelcontextprotocol/inspector node dist/index.js",
     "dev": "tsc --watch",
