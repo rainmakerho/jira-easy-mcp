@@ -1,7 +1,7 @@
-# jira-easy-mcp
+# @rainmakerho/jira-easy-mcp
 
-[![npm version](https://img.shields.io/npm/v/jira-easy-mcp.svg)](https://www.npmjs.com/package/jira-easy-mcp)
-[![GitHub](https://img.shields.io/github/license/IamSAL/jira-easy-mcp)](https://github.com/IamSAL/jira-easy-mcp)
+[![npm version](https://img.shields.io/npm/v/%40rainmakerho%2Fjira-easy-mcp.svg)](https://www.npmjs.com/package/@rainmakerho/jira-easy-mcp)
+[![GitHub](https://img.shields.io/github/license/rainmakerho/jira-easy-mcp)](https://github.com/rainmakerho/jira-easy-mcp)
 
 Another Model Context Protocol (MCP) server for Jira, without Auth token. Provides tools for complete Jira automation including issues, projects, boards, sprints, comments, worklogs, and more.
 
@@ -33,7 +33,7 @@ Create `.vscode/mcp.json` in your workspace root:
     "jira": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "jira-easy-mcp"],
+      "args": ["-y", "@rainmakerho/jira-easy-mcp"],
       "env": {
         "JIRA_BASE_URL": "https://your-jira-instance.com",
         "JIRA_USERNAME": "your-username",
@@ -99,7 +99,7 @@ The MCP server reads the file from the machine where it runs. Any file type is s
 The MCP Inspector provides a web UI to test all tools interactively:
 
 ```bash
-npx @modelcontextprotocol/inspector npx jira-easy-mcp
+npx @modelcontextprotocol/inspector npx @rainmakerho/jira-easy-mcp
 ```
 
 This opens a browser at `http://localhost:6274` where you can:
@@ -135,4 +135,4 @@ This opens a browser at `http://localhost:6274` where you can:
 | Jira Server v8.x    | ✅ Tested                        |
 | Jira Cloud          | ︖ Not tested (Use official MCP) |
 
-**You can improve this by [reporting issues](https://github.com/IamSAL/jira-easy-mcp/issues/new/choose)**
+**You can improve this by [reporting issues](https://github.com/rainmakerho/jira-easy-mcp/issues/new/choose)**
