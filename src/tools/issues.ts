@@ -1,28 +1,33 @@
 /**
  * Jira MCP Server - Issue Tools
- * 
+ *
  * Tools for searching, getting, creating, updating, and deleting issues.
  */
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
-import { jiraGet, jiraPost, jiraPut, jiraDelete } from '../client.js';
-import { formatResponse, getConfig } from '../config.js';
-import { startToolCall, endToolCall, failToolCall } from '../logger.js';
-import { toSimplifiedIssue, toSimplifiedSearchResult } from '../transformers.js';
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+import { jiraGet, jiraPost, jiraPut, jiraDelete } from "../client.js";
+import { formatResponse, getConfig } from "../config.js";
+import { startToolCall, endToolCall, failToolCall } from "../logger.js";
+import {
+  toSimplifiedIssue,
+  toSimplifiedSearchResult,
+} from "../transformers.js";
 import type {
   JiraIssue,
   JiraSearchResult,
   CreateIssueResponse,
   SimplifiedIssue,
   SimplifiedSearchResult,
-} from '../types.js';
+} from "../types.js";
 
 /**
  * Generate Jira filter URL with JQL and validate by searching first.
  * Detects platform (Cloud vs Server) and generates appropriate URL.
  */
-export const generateFilterUrl = async (jql: string): Promise<{
+export const generateFilterUrl = async (
+  jql: string,
+): Promise<{
   url: string;
   jql: string;
   total: number;
@@ -30,16 +35,15 @@ export const generateFilterUrl = async (jql: string): Promise<{
   maxResults: number;
 }> => {
   const { baseUrl } = getConfig();
-  
+
   // First, validate the JQL by performing a search
   const searchResult = await searchIssues(jql, 50, 0);
-  
 
   const encodedJql = encodeURIComponent(jql);
-  
+
   // Generate appropriate URL based on platform
   const url = `${baseUrl}/issues/?jql=${encodedJql}`;
-  
+
   return {
     url,
     jql,
@@ -56,20 +60,37 @@ export const searchIssues = async (
   jql: string,
   maxResults: number = 50,
   startAt: number = 0,
-  fields?: string[]
+  fields?: string[],
 ): Promise<SimplifiedSearchResult> => {
   const defaultFields = [
-    'summary', 'status', 'priority', 'issuetype', 'assignee', 'reporter',
-    'description', 'labels', 'components', 'fixVersions', 'resolution',
-    'created', 'updated', 'duedate', 'parent', 'subtasks', 'issuelinks',
-    'comment', 'worklog', 'attachment', 'timetracking'
+    "summary",
+    "status",
+    "priority",
+    "issuetype",
+    "assignee",
+    "reporter",
+    "description",
+    "labels",
+    "components",
+    "fixVersions",
+    "resolution",
+    "created",
+    "updated",
+    "duedate",
+    "parent",
+    "subtasks",
+    "issuelinks",
+    "comment",
+    "worklog",
+    "attachment",
+    "timetracking",
   ];
 
   const params = new URLSearchParams({
     jql,
     maxResults: maxResults.toString(),
     startAt: startAt.toString(),
-    fields: (fields || defaultFields).join(','),
+    fields: (fields || defaultFields).join(","),
   });
 
   const result = await jiraGet<JiraSearchResult>(`/search?${params}`);
@@ -81,21 +102,39 @@ export const searchIssues = async (
  */
 export const getIssue = async (
   issueKey: string,
-  expand?: string[]
+  expand?: string[],
 ): Promise<SimplifiedIssue> => {
   const fields = [
-    'summary', 'status', 'priority', 'issuetype', 'assignee', 'reporter',
-    'description', 'labels', 'components', 'fixVersions', 'resolution',
-    'created', 'updated', 'duedate', 'parent', 'subtasks', 'issuelinks',
-    'comment', 'worklog', 'attachment', 'timetracking', 'versions'
+    "summary",
+    "status",
+    "priority",
+    "issuetype",
+    "assignee",
+    "reporter",
+    "description",
+    "labels",
+    "components",
+    "fixVersions",
+    "resolution",
+    "created",
+    "updated",
+    "duedate",
+    "parent",
+    "subtasks",
+    "issuelinks",
+    "comment",
+    "worklog",
+    "attachment",
+    "timetracking",
+    "versions",
   ];
 
   const params = new URLSearchParams({
-    fields: fields.join(','),
+    fields: fields.join(","),
   });
 
   if (expand && expand.length > 0) {
-    params.set('expand', expand.join(','));
+    params.set("expand", expand.join(","));
   }
 
   const issue = await jiraGet<JiraIssue>(`/issue/${issueKey}?${params}`);
@@ -119,7 +158,7 @@ export const createIssue = async (
     dueDate?: string;
     parentKey?: string;
     customFields?: Record<string, unknown>;
-  }
+  },
 ): Promise<CreateIssueResponse> => {
   const fields: Record<string, unknown> = {
     project: { key: projectKey },
@@ -140,10 +179,10 @@ export const createIssue = async (
     fields.labels = options.labels;
   }
   if (options?.components) {
-    fields.components = options.components.map(name => ({ name }));
+    fields.components = options.components.map((name) => ({ name }));
   }
   if (options?.fixVersions) {
-    fields.fixVersions = options.fixVersions.map(name => ({ name }));
+    fields.fixVersions = options.fixVersions.map((name) => ({ name }));
   }
   if (options?.dueDate) {
     fields.duedate = options.dueDate;
@@ -155,7 +194,7 @@ export const createIssue = async (
     Object.assign(fields, options.customFields);
   }
 
-  return jiraPost<CreateIssueResponse>('/issue', { fields });
+  return jiraPost<CreateIssueResponse>("/issue", { fields });
 };
 
 /**
@@ -173,7 +212,7 @@ export const updateIssue = async (
     fixVersions?: string[];
     dueDate?: string;
     customFields?: Record<string, unknown>;
-  }
+  },
 ): Promise<void> => {
   const fields: Record<string, unknown> = {};
 
@@ -193,10 +232,10 @@ export const updateIssue = async (
     fields.labels = updates.labels;
   }
   if (updates.components !== undefined) {
-    fields.components = updates.components.map(name => ({ name }));
+    fields.components = updates.components.map((name) => ({ name }));
   }
   if (updates.fixVersions !== undefined) {
-    fields.fixVersions = updates.fixVersions.map(name => ({ name }));
+    fields.fixVersions = updates.fixVersions.map((name) => ({ name }));
   }
   if (updates.dueDate !== undefined) {
     fields.duedate = updates.dueDate;
@@ -213,9 +252,9 @@ export const updateIssue = async (
  */
 export const deleteIssue = async (
   issueKey: string,
-  deleteSubtasks: boolean = false
+  deleteSubtasks: boolean = false,
 ): Promise<void> => {
-  const params = deleteSubtasks ? '?deleteSubtasks=true' : '';
+  const params = deleteSubtasks ? "?deleteSubtasks=true" : "";
   await jiraDelete(`/issue/${issueKey}${params}`);
 };
 
@@ -225,11 +264,11 @@ export const deleteIssue = async (
 export const getIssueChangelog = async (
   issueKey: string,
   startAt: number = 0,
-  maxResults: number = 100
-): Promise<JiraIssue['changelog']> => {
+  maxResults: number = 100,
+): Promise<JiraIssue["changelog"]> => {
   const params = new URLSearchParams({
-    expand: 'changelog',
-    fields: 'key', // Minimal fields, we just want changelog
+    expand: "changelog",
+    fields: "key", // Minimal fields, we just want changelog
     startAt: startAt.toString(),
     maxResults: maxResults.toString(),
   });
@@ -250,7 +289,7 @@ export const registerIssueTools = (server: McpServer): void => {
       jql: z
         .string()
         .describe(
-          'JQL query string. Examples: "project = KP AND status = Open", "assignee = currentUser() ORDER BY updated DESC", "sprint in openSprints() AND status != Done"'
+          'JQL query string. Examples: "project = KP AND status = Open", "assignee = currentUser() ORDER BY updated DESC", "sprint in openSprints() AND status != Done"',
         ),
       maxResults: z
         .number()
@@ -275,7 +314,7 @@ export const registerIssueTools = (server: McpServer): void => {
           args.jql,
           args.maxResults,
           args.startAt,
-          args.fields
+          args.fields,
         );
         endToolCall(callLog, result);
         return { content: [{ type: "text", text: formatResponse(result) }] };
@@ -283,86 +322,148 @@ export const registerIssueTools = (server: McpServer): void => {
         failToolCall(callLog, err);
         throw err;
       }
-    }
+    },
   );
 
   // Get issue details
   server.tool(
-    'jira_get_issue',
-    'Get full details of a specific Jira issue including summary, description, status, assignee, reporter, priority, comments, worklogs, attachments, subtasks, and linked issues. Use this when you need comprehensive information about a single issue or want to see its current state, history, or relationships.',
+    "jira_get_issue",
+    "Get full details of a specific Jira issue including summary, description, status, assignee, reporter, priority, comments, worklogs, attachments, subtasks, and linked issues. Use this when you need comprehensive information about a single issue or want to see its current state, history, or relationships.",
     {
-      issueKey: z.string().describe('Issue key (e.g., KP-123) or numeric issue ID'),
-      expand: z.array(z.string()).optional().describe('Fields to expand (e.g., changelog, renderedFields)'),
+      issueKey: z
+        .string()
+        .describe("Issue key (e.g., KP-123) or numeric issue ID"),
+      expand: z
+        .array(z.string())
+        .optional()
+        .describe("Fields to expand (e.g., changelog, renderedFields)"),
     },
     async (args) => {
-      const callLog = startToolCall('jira_get_issue', args);
+      const callLog = startToolCall("jira_get_issue", args);
       try {
         const issue = await getIssue(args.issueKey, args.expand);
         endToolCall(callLog, issue);
-        return { content: [{ type: 'text', text: formatResponse(issue) }] };
+        return { content: [{ type: "text", text: formatResponse(issue) }] };
       } catch (err) {
         failToolCall(callLog, err);
         throw err;
       }
-    }
+    },
   );
 
   // Create issue
   server.tool(
-    'jira_create_issue',
-    'Create a new Jira issue (bug, task, story, epic, subtask, etc.) in a project. Use jira_get_issue_types first if unsure which issue types are available. For subtasks, provide the parentKey. Returns the new issue key and URL.',
+    "jira_create_issue",
+    "Create a new Jira issue (bug, task, story, epic, subtask, etc.) in a project. Use jira_get_issue_types first if unsure which issue types are available. For subtasks, provide the parentKey. Returns the new issue key and URL.",
     {
-      projectKey: z.string().describe('Project key (e.g., KP). Use jira_get_projects to list available projects'),
-      issueType: z.string().describe('Issue type name (e.g., Bug, Task, Story, Epic, Sub-task). Use jira_get_issue_types to see available types'),
-      summary: z.string().describe('Issue title/summary - a brief description of the issue'),
-      description: z.string().optional().describe('Issue description'),
-      assignee: z.string().optional().describe('Username to assign the issue to'),
-      priority: z.string().optional().describe('Priority name (e.g., High, Medium, Low)'),
-      labels: z.array(z.string()).optional().describe('Labels to add'),
-      components: z.array(z.string()).optional().describe('Component names'),
-      fixVersions: z.array(z.string()).optional().describe('Fix version names'),
-      dueDate: z.string().optional().describe('Due date in YYYY-MM-DD format'),
-      parentKey: z.string().optional().describe('Parent issue key for subtasks'),
+      projectKey: z
+        .string()
+        .describe(
+          "Project key (e.g., KP). Use jira_get_projects to list available projects",
+        ),
+      issueType: z
+        .string()
+        .describe(
+          "Issue type name (e.g., Bug, Task, Story, Epic, Sub-task). Use jira_get_issue_types to see available types",
+        ),
+      summary: z
+        .string()
+        .describe("Issue title/summary - a brief description of the issue"),
+      description: z.string().optional().describe("Issue description"),
+      assignee: z
+        .string()
+        .optional()
+        .describe("Username to assign the issue to"),
+      priority: z
+        .string()
+        .optional()
+        .describe("Priority name (e.g., High, Medium, Low)"),
+      labels: z.array(z.string()).optional().describe("Labels to add"),
+      components: z.array(z.string()).optional().describe("Component names"),
+      fixVersions: z.array(z.string()).optional().describe("Fix version names"),
+      dueDate: z.string().optional().describe("Due date in YYYY-MM-DD format"),
+      parentKey: z
+        .string()
+        .optional()
+        .describe("Parent issue key for subtasks"),
+      customFields: z
+        .record(z.unknown())
+        .optional()
+        .describe(
+          'Custom/mandatory fields not covered by the other parameters, keyed by field ID (e.g., {"customfield_10010": "value"}). Use jira_get_create_meta to discover required custom field IDs and expected value shapes (string, {"value": "..."}, {"id": "..."}, array, etc.) before setting this.',
+        ),
     },
     async (args) => {
-      const callLog = startToolCall('jira_create_issue', args);
+      const callLog = startToolCall("jira_create_issue", args);
       try {
-        const result = await createIssue(args.projectKey, args.issueType, args.summary, {
-          description: args.description,
-          assignee: args.assignee,
-          priority: args.priority,
-          labels: args.labels,
-          components: args.components,
-          fixVersions: args.fixVersions,
-          dueDate: args.dueDate,
-          parentKey: args.parentKey,
-        });
+        const result = await createIssue(
+          args.projectKey,
+          args.issueType,
+          args.summary,
+          {
+            description: args.description,
+            assignee: args.assignee,
+            priority: args.priority,
+            labels: args.labels,
+            components: args.components,
+            fixVersions: args.fixVersions,
+            dueDate: args.dueDate,
+            parentKey: args.parentKey,
+            customFields: args.customFields,
+          },
+        );
         endToolCall(callLog, result);
-        return { content: [{ type: 'text', text: formatResponse(result) }] };
+        return { content: [{ type: "text", text: formatResponse(result) }] };
       } catch (err) {
         failToolCall(callLog, err);
         throw err;
       }
-    }
+    },
   );
 
   // Update issue
   server.tool(
-    'jira_update_issue',
-    'Modify an existing Jira issue\'s fields (summary, description, assignee, priority, labels, components, fix versions, due date). Only the fields you specify will be changed - others remain unchanged. To change status/workflow state, use jira_transition_issue instead. To add comments, use jira_add_comment.',
+    "jira_update_issue",
+    "Modify an existing Jira issue's fields (summary, description, assignee, priority, labels, components, fix versions, due date). Only the fields you specify will be changed - others remain unchanged. To change status/workflow state, use jira_transition_issue instead. To add comments, use jira_add_comment.",
     {
-      issueKey: z.string().describe('Issue key to update (e.g., KP-123)'),
-      summary: z.string().optional().describe('New issue title/summary'),
-      description: z.string().optional().describe('New description text'),
-      assignee: z.string().optional().describe('Username to assign to (use empty string "" to unassign, use jira_get_assignable_users to find valid usernames)'),
-      priority: z.string().optional().describe('Priority name (e.g., Highest, High, Medium, Low, Lowest)'),
-      labels: z.array(z.string()).optional().describe('New labels (replaces existing)'),
-      components: z.array(z.string()).optional().describe('New components (replaces existing)'),
-      fixVersions: z.array(z.string()).optional().describe('New fix versions (replaces existing)'),
-      dueDate: z.string().optional().describe('New due date in YYYY-MM-DD format'),
+      issueKey: z.string().describe("Issue key to update (e.g., KP-123)"),
+      summary: z.string().optional().describe("New issue title/summary"),
+      description: z.string().optional().describe("New description text"),
+      assignee: z
+        .string()
+        .optional()
+        .describe(
+          'Username to assign to (use empty string "" to unassign, use jira_get_assignable_users to find valid usernames)',
+        ),
+      priority: z
+        .string()
+        .optional()
+        .describe("Priority name (e.g., Highest, High, Medium, Low, Lowest)"),
+      labels: z
+        .array(z.string())
+        .optional()
+        .describe("New labels (replaces existing)"),
+      components: z
+        .array(z.string())
+        .optional()
+        .describe("New components (replaces existing)"),
+      fixVersions: z
+        .array(z.string())
+        .optional()
+        .describe("New fix versions (replaces existing)"),
+      dueDate: z
+        .string()
+        .optional()
+        .describe("New due date in YYYY-MM-DD format"),
+      customFields: z
+        .record(z.unknown())
+        .optional()
+        .describe(
+          'Custom fields to set, keyed by field ID (e.g., {"customfield_10010": "value"}). Use jira_get_create_meta or jira_get_fields to discover field IDs and expected value shapes.',
+        ),
     },
     async (args) => {
-      const callLog = startToolCall('jira_update_issue', args);
+      const callLog = startToolCall("jira_update_issue", args);
       try {
         await updateIssue(args.issueKey, {
           summary: args.summary,
@@ -373,74 +474,105 @@ export const registerIssueTools = (server: McpServer): void => {
           components: args.components,
           fixVersions: args.fixVersions,
           dueDate: args.dueDate,
+          customFields: args.customFields,
         });
-        const result = { success: true, message: `Issue ${args.issueKey} updated successfully.` };
+        const result = {
+          success: true,
+          message: `Issue ${args.issueKey} updated successfully.`,
+        };
         endToolCall(callLog, result);
-        return { content: [{ type: 'text', text: result.message }] };
+        return { content: [{ type: "text", text: result.message }] };
       } catch (err) {
         failToolCall(callLog, err);
         throw err;
       }
-    }
+    },
   );
 
   // Delete issue
   server.tool(
-    'jira_delete_issue',
+    "jira_delete_issue",
     'Permanently delete a Jira issue. WARNING: This action cannot be undone. If the issue has subtasks, you must set deleteSubtasks=true or the deletion will fail. Consider transitioning to a "Cancelled" or "Won\'t Do" status instead of deleting.',
     {
-      issueKey: z.string().describe('Issue key to delete (e.g., KP-123)'),
-      deleteSubtasks: z.boolean().default(false).describe('Set to true to also delete all subtasks. Required if the issue has subtasks.'),
+      issueKey: z.string().describe("Issue key to delete (e.g., KP-123)"),
+      deleteSubtasks: z
+        .boolean()
+        .default(false)
+        .describe(
+          "Set to true to also delete all subtasks. Required if the issue has subtasks.",
+        ),
     },
     async (args) => {
-      const callLog = startToolCall('jira_delete_issue', args);
+      const callLog = startToolCall("jira_delete_issue", args);
       try {
         await deleteIssue(args.issueKey, args.deleteSubtasks);
-        const result = { success: true, message: `Issue ${args.issueKey} deleted successfully.` };
+        const result = {
+          success: true,
+          message: `Issue ${args.issueKey} deleted successfully.`,
+        };
         endToolCall(callLog, result);
-        return { content: [{ type: 'text', text: result.message }] };
+        return { content: [{ type: "text", text: result.message }] };
       } catch (err) {
         failToolCall(callLog, err);
         throw err;
       }
-    }
+    },
   );
 
   // Get issue changelog
   server.tool(
-    'jira_get_changelog',
-    'Get the complete change history of a Jira issue - shows who changed what field, when, and from/to values. Useful for auditing, understanding how an issue evolved, or finding when a specific change was made.',
+    "jira_get_changelog",
+    "Get the complete change history of a Jira issue - shows who changed what field, when, and from/to values. Useful for auditing, understanding how an issue evolved, or finding when a specific change was made.",
     {
-      issueKey: z.string().describe('Issue key to get history for (e.g., KP-123)'),
-      startAt: z.number().min(0).default(0).describe('Starting index for pagination'),
-      maxResults: z.number().min(1).max(100).default(100).describe('Maximum number of results'),
+      issueKey: z
+        .string()
+        .describe("Issue key to get history for (e.g., KP-123)"),
+      startAt: z
+        .number()
+        .min(0)
+        .default(0)
+        .describe("Starting index for pagination"),
+      maxResults: z
+        .number()
+        .min(1)
+        .max(100)
+        .default(100)
+        .describe("Maximum number of results"),
     },
     async (args) => {
-      const callLog = startToolCall('jira_get_changelog', args);
+      const callLog = startToolCall("jira_get_changelog", args);
       try {
-        const changelog = await getIssueChangelog(args.issueKey, args.startAt, args.maxResults);
+        const changelog = await getIssueChangelog(
+          args.issueKey,
+          args.startAt,
+          args.maxResults,
+        );
         endToolCall(callLog, changelog);
-        return { content: [{ type: 'text', text: formatResponse(changelog) }] };
+        return { content: [{ type: "text", text: formatResponse(changelog) }] };
       } catch (err) {
         failToolCall(callLog, err);
         throw err;
       }
-    }
+    },
   );
 
   // Generate filter URL with validation
   server.tool(
-    'jira_generate_filter_url',
+    "jira_generate_filter_url",
     'Generate a validated Jira filter URL with a JQL query. This tool first validates the JQL by searching Jira, then returns both the search results (first 50 issues) and a shareable URL. The URL format adapts automatically based on your Jira platform (Cloud vs Server). Use this to create shareable links and preview results. Common JQL examples: "updated >= -7d" (last 7 days), "created >= -1w" (last week), "assignee = currentUser() AND status = Open", "project = KP AND priority = High".',
     {
-      jql: z.string().describe('JQL (Jira Query Language) query string. Examples: "updated >= -7d", "project = KP AND status = Open", "assignee = currentUser()"'),
+      jql: z
+        .string()
+        .describe(
+          'JQL (Jira Query Language) query string. Examples: "updated >= -7d", "project = KP AND status = Open", "assignee = currentUser()"',
+        ),
     },
     async (args) => {
-      const callLog = startToolCall('jira_generate_filter_url', args);
+      const callLog = startToolCall("jira_generate_filter_url", args);
       try {
         const result = await generateFilterUrl(args.jql);
         endToolCall(callLog, result);
-        
+
         // Format the response to show both the results and the URL
         const summary = {
           url: result.url,
@@ -452,12 +584,12 @@ export const registerIssueTools = (server: McpServer): void => {
           },
           issues: result.issues,
         };
-        
-        return { content: [{ type: 'text', text: formatResponse(summary) }] };
+
+        return { content: [{ type: "text", text: formatResponse(summary) }] };
       } catch (err) {
         failToolCall(callLog, err);
         throw err;
       }
-    }
+    },
   );
 };
